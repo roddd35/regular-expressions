@@ -1,6 +1,9 @@
 #pragma once
+
+#include <stack>
 #include <vector>
 #include <string>
+#include <fstream>
 #include <iostream>
 
 using namespace std;
@@ -22,7 +25,9 @@ class Graph {
 
     public:
         Graph(string exp);
-        void buildAutomata();
-        void dfsR(int v, bool* marked);
         bool recognize(string word);
+        void printGraph();
+        void addEdge(int v, int w);
+        void dfsR(int v, bool* marked);
+        void buildAutomata(string regexp);   // pag 800 sedgewick (813 do PDF)
 };

@@ -1,42 +1,35 @@
 #include "graph.h"
 
-int le_conjunto(int indexExp, int indexPal, string word, string exp);
-int le_complemento(int indexExp, int indexPal, string word, string exp);
-
 int main(){
     int n;
+    bool reconhece;
+    fstream File;
     string word;
+    string filename;
     string expression;
     
-    cout << "Bem vinde! Informe a expressão regular: ";
-    cin >> expression;
+    cout << "Bem vinde! Informe o arquivo de leitura: ";
+    cin >> filename;
 
-    cout << endl << "Informe quantas palavras serão testadas ";
-    cin >> n;
+    File.open(filename, ios::in);
 
-    for(int i = 0; i < n; i++){
-        cout << endl << "Informe a palavra: ";
-        cin >> word;
+    File >> expression;
 
-    }
+    Graph* G = new Graph(expression);
+    G->buildAutomata(expression);
+
+    File >> n;
+    
+    G->printGraph();
+    // for(int i = 0; i < n; i++){
+    //     File >> word;
+
+    //     reconhece = G->recognize(word);
+    //     if(reconhece)
+    //         cout << "S" << endl;
+    //     else    
+    //         cout << "N" << endl;
+    // }
 
     return 0;
-}
-
-int le_conjunto(int indexExp, int indexPal, string word, string exp){
-    while(exp[indexExp] != ']'){
-        if(exp[indexExp] == word[indexPal])
-            return 1;
-        indexExp++;
-    }
-    return 0;
-}
-
-int le_complemento(int indexExp, int indexPal, string word, string exp){
-    while(exp[indexExp] != ']'){
-        if(exp[indexExp] == word[indexPal])
-            return 0;
-        indexExp++;
-    }
-    return 1;
 }

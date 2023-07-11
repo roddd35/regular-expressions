@@ -1,0 +1,4 @@
+((A*B|AC)D)
+2
+AABCD
+ABBD
