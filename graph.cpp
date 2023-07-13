@@ -13,13 +13,19 @@ Graph::Graph(string exp){
         node->op = exp[i];
         node->vertex = this->V;
 
+        // verificar se é lambda-t
+        if(exp[i] == '|' || exp[i] == '(' || exp[i] == ')' || exp[i] == '[' || exp[i] == ']' || exp[i] == '+' || exp[i] == '*')
+            node->ehLambdaT = true;
+        else 
+            node->ehLambdaT = false;
+
         this->adjList.push_back(node);
         this->V++;
     }
 }
 
 // FUNCAO: CONSTROI GRAFO DO AUTOMATO
-// terminar os operadores: coringa (.), conjunto ([]), complemento ([^])
+// terminar os operadores: conjunto ([]), complemento ([^]), intervalo ([-])
 void Graph::buildAutomata(string regexp){
     int sizeRE = regexp.length();
     stack<int> operatorST;  // armazenar os operadores "(" e "|"
@@ -43,6 +49,7 @@ void Graph::buildAutomata(string regexp){
             else
                 lp = orOP;  // recebo o parenteses desempilhado aqui
         }
+
         // se o próximo símbolo for *, coloco uma aresta dele para "(" e vice versa
         if(i < sizeRE - 1 && regexp[i + 1] == '*'){
             addEdge(lp, i + 1);
@@ -97,7 +104,7 @@ void Graph::dfsR(int v, bool* marked){
 
     // fazer DFS apenas em lambda-t
     for(int w = 0; w < this->adjList[v]->size; w++){    
-        if(!marked[this->adjList[v]->nodesList[w]->vertex] && (this->adjList[v]->op == '|' ||this->adjList[v]->op == '(' || this->adjList[v]->op == ')' || this->adjList[v]->op == '+' || this->adjList[v]->op == '*'))
+        if(!marked[this->adjList[v]->nodesList[w]->vertex] && this->adjList[v]->ehLambdaT)
             dfsR(this->adjList[v]->nodesList[w]->vertex, marked);
     }
 }
@@ -112,10 +119,10 @@ bool Graph::recognize(string word){
 
     dfsR(0, visited);   // marcar todos vertices que visitamos saindo de 0
 
-    // cout << "VETOR VISITED INICIO: " << endl;
-    // for(int i = 0; i < this->V; i++)
-    //     cout << visited[i] << " ";
-    // cout << endl;
+    cout << "VETOR VISITED INICIO: " << endl;
+    for(int i = 0; i < this->V; i++)
+        cout << visited[i] << " ";
+    cout << endl;
 
     for(int i = 0; i < word.length(); i++){
         bool* next = new bool[this->V];
@@ -123,14 +130,16 @@ bool Graph::recognize(string word){
             next[j] = false;
 
         // determinar as proximas posicoes que devemos visitar no grafo, com o caractere que queremos ler
-        for(int j = 0; j < this->V; j++)    // tratamento pro coringa ser lido como qualquer caractere
+        for(int j = 0; j < this->V; j++){    
+            // tratamento pro coringa ser lido como qualquer caractere
             if(visited[j] && (this->adjList[j]->op == word[i] || (this->adjList[j]->op == '.' && this->adjList[j - 1]->op != '\\')))
                 next[j + 1] = true;
+        }
 
-        // cout << "VETOR NEXT: " << endl;
-        // for(int j = 0; j < this->V; j++)
-        //     cout << next[j] << " ";
-        // cout << endl;
+        cout << "VETOR NEXT: " << endl;
+        for(int j = 0; j < this->V; j++)
+            cout << next[j] << " ";
+        cout << endl;
 
         bool* marked = new bool[this->V];
         for(int j = 0; j < this->V; j++)
@@ -143,13 +152,14 @@ bool Graph::recognize(string word){
                 dfsR(j, marked);
             }
         }
+        // se não chegamos ao próximo caractere, quebra
         if(!rodou)
             return false;
 
-        // cout << "VETOR MARKED: " << endl;
-        // for(int j = 0; j < this->V; j++)
-        //     cout << marked[j] << " ";
-        // cout << endl;
+        cout << "VETOR MARKED: " << endl;
+        for(int j = 0; j < this->V; j++)
+            cout << marked[j] << " ";
+        cout << endl;
 
         // manter o resultado obtido no DFS pra rodar na proxima iteracao do grafo
         for(int j = 0; j < this->V; j++)
@@ -159,10 +169,10 @@ bool Graph::recognize(string word){
         delete[] marked;
         rodou = false;
     }
-    // cout << "VETOR VISITED FIM: " << endl;
-    // for(int i = 0; i < this->V; i++)
-    //     cout << visited[i] << " ";
-    // cout << endl;
+    cout << "VETOR VISITED FIM: " << endl;
+    for(int i = 0; i < this->V; i++)
+        cout << visited[i] << " ";
+    cout << endl;
 
     bool retorno = visited[this->V - 1];
     delete[] visited;

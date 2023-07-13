@@ -13,6 +13,7 @@ struct No{
     char op;
     int size;
     int vertex;
+    bool ehLambdaT;
     vector<No*> nodesList; // saving which state connects to which
 };
 
