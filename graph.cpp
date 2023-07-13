@@ -20,7 +20,6 @@ Graph::Graph(string exp){
 
 // FUNCAO: CONSTROI GRAFO DO AUTOMATO
 // terminar os operadores: coringa (.), conjunto ([]), complemento ([^])
-// fazer tratamento para "\@", com @ sendo qualquer caracter especial e para números
 void Graph::buildAutomata(string regexp){
     int sizeRE = regexp.length();
     stack<int> operatorST;  // armazenar os operadores "(" e "|"
@@ -37,6 +36,8 @@ void Graph::buildAutomata(string regexp){
                 lp = operatorST.top();
                 operatorST.pop();
                 addEdge(lp, orOP + 1);  // conecto o parenteses para depois do OR
+                if(regexp[orOP + 2] == '*')
+                    addEdge(lp, orOP + 2);
                 addEdge(orOP, i);   // conecto o OR com a posição do ")"
             }
             else
@@ -52,8 +53,8 @@ void Graph::buildAutomata(string regexp){
         if(i < sizeRE - 1 && regexp[i + 1] == '+')
             addEdge(i + 1, lp);
 
-        // se o atual for algum desses simbolos, coloco uma aresta para o seguinte
-        if((regexp[i] == '(' || regexp[i] == '*' || regexp[i] == ')' || (regexp[i] >= 65 && regexp[i] <= 90)) && i < sizeRE - 1)
+        // 33-126 sao as letras, numeros e caracteres especiais na tabela ascii, pular pro estado seguinte
+        if(regexp[i] >= 33 && regexp[i] <= 126 && regexp[i] != '|' && i < sizeRE - 1)
             addEdge(i, i + 1);
     }
 }
@@ -92,46 +93,76 @@ void Graph::printGraph(){
 
 // FUNCAO: BUSCA EM PROFUNDIDADE NO GRAFO
 void Graph::dfsR(int v, bool* marked){
-    marked[v] = true;
+    marked[v] = true;   // marcar o proprio vertice, caso o DFS nao encontre mais nenhum
 
-    for(int w = 0; w < this->adjList[v]->size; w++){
-        if(!marked[this->adjList[v]->nodesList[w]->vertex])
+    // fazer DFS apenas em lambda-t
+    for(int w = 0; w < this->adjList[v]->size; w++){    
+        if(!marked[this->adjList[v]->nodesList[w]->vertex] && (this->adjList[v]->op == '|' ||this->adjList[v]->op == '(' || this->adjList[v]->op == ')' || this->adjList[v]->op == '+' || this->adjList[v]->op == '*'))
             dfsR(this->adjList[v]->nodesList[w]->vertex, marked);
     }
 }
 
 // FUNCAO: VERIFICA SE O AUTOMATO RECONHECE UMA PALAVRA
 bool Graph::recognize(string word){
+    bool rodou = false;
+
     bool* visited = new bool[this->V];
     for(int i = 0; i < this->V; i++)
         visited[i] = false;
+
     dfsR(0, visited);   // marcar todos vertices que visitamos saindo de 0
+
+    // cout << "VETOR VISITED INICIO: " << endl;
+    // for(int i = 0; i < this->V; i++)
+    //     cout << visited[i] << " ";
+    // cout << endl;
 
     for(int i = 0; i < word.length(); i++){
         bool* next = new bool[this->V];
         for(int j = 0; j < this->V; j++)
             next[j] = false;
 
-        for(int j = 0; j < this->V; j++)
-            if(visited[j] && this->adjList[j]->op == word[i])
-                next[j] = true; // saber por quais letras da palavra já passamos
+        // determinar as proximas posicoes que devemos visitar no grafo, com o caractere que queremos ler
+        for(int j = 0; j < this->V; j++)    // tratamento pro coringa ser lido como qualquer caractere
+            if(visited[j] && (this->adjList[j]->op == word[i] || (this->adjList[j]->op == '.' && this->adjList[j - 1]->op != '\\')))
+                next[j + 1] = true;
+
+        // cout << "VETOR NEXT: " << endl;
+        // for(int j = 0; j < this->V; j++)
+        //     cout << next[j] << " ";
+        // cout << endl;
 
         bool* marked = new bool[this->V];
         for(int j = 0; j < this->V; j++)
             marked[j] = false;
 
+        // encontrar, da letra que lemos, onde podemos chegar por lambda-t
         for(int j = 0; j < this->V; j++){
-            if(next[j])
-                for(int k = 0; k < this->V; k++)
-                    marked[k] = false;
-            dfsR(j, marked);
-            for(int k = 0; k < this->V; k++)
-                if(marked[k])
-                    visited[k] = true;
+            if(next[j]){
+                rodou = true;
+                dfsR(j, marked);
+            }
         }
+        if(!rodou)
+            return false;
+
+        // cout << "VETOR MARKED: " << endl;
+        // for(int j = 0; j < this->V; j++)
+        //     cout << marked[j] << " ";
+        // cout << endl;
+
+        // manter o resultado obtido no DFS pra rodar na proxima iteracao do grafo
+        for(int j = 0; j < this->V; j++)
+            visited[j] = marked[j];
+
         delete[] next;
         delete[] marked;
+        rodou = false;
     }
+    // cout << "VETOR VISITED FIM: " << endl;
+    // for(int i = 0; i < this->V; i++)
+    //     cout << visited[i] << " ";
+    // cout << endl;
 
     bool retorno = visited[this->V - 1];
     delete[] visited;

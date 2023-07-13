@@ -1,4 +1,4 @@
-(A*CG|A*TA|AAG*T)*
+((A*CG|A*TA)|AAG*T)*
 4
 AACGTAAATA
 CAAGA

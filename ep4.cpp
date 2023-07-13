@@ -21,15 +21,15 @@ int main(){
     File >> n;
     
     G->printGraph();
-    // for(int i = 0; i < n; i++){
-    //     File >> word;
+    for(int i = 0; i < n; i++){
+        File >> word;
 
-    //     reconhece = G->recognize(word);
-    //     if(reconhece)
-    //         cout << "S" << endl;
-    //     else    
-    //         cout << "N" << endl;
-    // }
+        reconhece = G->recognize(word);
+        if(reconhece)
+            cout << "S" << endl;
+        else    
+            cout << "N" << endl;
+    }
 
     return 0;
 }
