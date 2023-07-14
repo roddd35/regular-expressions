@@ -14,6 +14,7 @@ struct No{
     int size;
     int vertex;
     bool ehLambdaT;
+    string operationType;
     vector<No*> nodesList; // saving which state connects to which
 };
 
@@ -30,5 +31,7 @@ class Graph {
         void printGraph();
         void addEdge(int v, int w);
         void dfsR(int v, bool* marked);
-        void buildAutomata(string regexp);   // pag 800 sedgewick (813 do PDF)
+        void buildAutomata(string regexp);
+        bool defineLambdaT(string exp, int index);
+        string defineOp(string exp, int index);
 };

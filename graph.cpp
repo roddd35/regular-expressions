@@ -12,19 +12,39 @@ Graph::Graph(string exp){
         node->size = 0;
         node->op = exp[i];
         node->vertex = this->V;
-
-        // verificar se é lambda-t
-        if(exp[i] == '|' || exp[i] == '(' || exp[i] == ')' || exp[i] == '[' || exp[i] == ']' || exp[i] == '+' || exp[i] == '*')
-            node->ehLambdaT = true;
-        else 
-            node->ehLambdaT = false;
+        node->operationType = defineOp(exp, i);
+        node->ehLambdaT = defineLambdaT(exp, i);
 
         this->adjList.push_back(node);
         this->V++;
     }
 }
 
-// FUNCAO: CONSTROI GRAFO DO AUTOMATO
+// define se um vértice realiza lambda transição
+bool Graph::defineLambdaT(string exp, int index){
+    if(exp[index] == '|' || exp[index] == '(' || exp[index] == ')' || exp[index] == '[' || exp[index] == ']' || exp[index] == '+' || exp[index] == '*' || exp[index] == '\\'){
+        if(index == 0) return true;
+
+        else if(exp[index - 1] != '\\') return true;
+    }
+    return false;
+}
+
+// definir se é operação de conjunto, intervalo ou complemento, no primeiro elemento após "["
+string Graph::defineOp(string exp, int index){
+    if(exp[index - 1] == '['){
+        if(exp[index] == '^')
+            return "complemento";
+        else if(exp[index + 1] == '-')
+            return "intervalo";
+        else
+            return "conjunto";
+    }
+    else
+        return "";
+}
+
+// FUNCAO: CONSTROI ARESTAS DO AUTOMATO
 // terminar os operadores: conjunto ([]), complemento ([^]), intervalo ([-])
 void Graph::buildAutomata(string regexp){
     int sizeRE = regexp.length();
@@ -77,9 +97,11 @@ void Graph::addEdge(int v, int w){
     
     if(!achou){
         No* node = new No();
+
+        node->vertex = w;
         node->op = this->adjList[w]->op;
         node->size = this->adjList[v]->size + 1;
-        node->vertex = w;
+        node->operationType = this->adjList[w]->operationType;
 
         this->adjList[v]->nodesList.push_back(node);
         this->adjList[v]->size++;
@@ -91,10 +113,10 @@ void Graph::addEdge(int v, int w){
 void Graph::printGraph(){
     for(int i = 0; i < this->V; i++){
         cout << "==========================================" << endl;
-        cout << "Vértice: " << this->adjList[i]->op << endl;
+        cout << "Vértice: " << this->adjList[i]->op << "    " << this->adjList[i]->operationType << endl;
         cout << "Arestas: " << endl; 
         for(int j = 0; j < this->adjList[i]->size; j++)
-            cout << "   " << this->adjList[i]->nodesList[j]->op << " " << this->adjList[i]->nodesList[j]->vertex << endl;
+            cout << "   " << this->adjList[i]->nodesList[j]->op << " " << this->adjList[i]->nodesList[j]->vertex << "    " << this->adjList[i]->nodesList[j]->operationType << endl;
     }
 }
 
@@ -111,7 +133,8 @@ void Graph::dfsR(int v, bool* marked){
 
 // FUNCAO: VERIFICA SE O AUTOMATO RECONHECE UMA PALAVRA
 bool Graph::recognize(string word){
-    bool rodou = false;
+    if(word == "" && this->adjList[this->V - 1]->op == '*')
+        return true;
 
     bool* visited = new bool[this->V];
     for(int i = 0; i < this->V; i++)
@@ -119,11 +142,7 @@ bool Graph::recognize(string word){
 
     dfsR(0, visited);   // marcar todos vertices que visitamos saindo de 0
 
-    cout << "VETOR VISITED INICIO: " << endl;
-    for(int i = 0; i < this->V; i++)
-        cout << visited[i] << " ";
-    cout << endl;
-
+    // iterar por cada letra da palavra que queremos
     for(int i = 0; i < word.length(); i++){
         bool* next = new bool[this->V];
         for(int j = 0; j < this->V; j++)
@@ -131,35 +150,69 @@ bool Graph::recognize(string word){
 
         // determinar as proximas posicoes que devemos visitar no grafo, com o caractere que queremos ler
         for(int j = 0; j < this->V; j++){    
-            // tratamento pro coringa ser lido como qualquer caractere
-            if(visited[j] && (this->adjList[j]->op == word[i] || (this->adjList[j]->op == '.' && this->adjList[j - 1]->op != '\\')))
+            // letra solta ou coringa
+            if(visited[j] && this->adjList[j]->operationType == "" && (this->adjList[j]->op == word[i] || (this->adjList[j]->op == '.' && this->adjList[j - 1]->op != '\\')))
                 next[j + 1] = true;
-        }
 
-        cout << "VETOR NEXT: " << endl;
-        for(int j = 0; j < this->V; j++)
-            cout << next[j] << " ";
-        cout << endl;
+            // conjunto
+            else if(visited[j] && this->adjList[j]->operationType == "conjunto"){
+                int k = j;
+                bool encaixaConjunto = false;
+                while(this->adjList[k]->op != ']'){
+                    if(this->adjList[k]->op == word[i])
+                        encaixaConjunto = true;
+                    k++;
+                }
+                if(encaixaConjunto)
+                    next[k] = true; // marco true na casa do "]"
+            }
+
+            // complemento
+            else if(visited[j] && this->adjList[j]->operationType == "complemento"){
+                if(this->adjList[j + 2]->op == '-'){    // complemento de intervalo
+                    int ini = this->adjList[j + 1]->op;
+                    int fim = this->adjList[j + 3]->op;
+                    if(!(word[i] >= ini && word[i] <= fim))
+                        next[j + 4] = true;
+                }
+                else{   // complemento padrao
+                    int k = j;
+                    bool encaixaComplemento = true;
+                    while(this->adjList[k]->op != ']'){
+                        if(this->adjList[k]->op == word[i])
+                            encaixaComplemento = false;
+                        k++;
+                    }
+                    if(encaixaComplemento)
+                        next[k] = true;
+                }
+            }
+            
+            // intervalo
+            else if(visited[j] && this->adjList[j]->operationType == "intervalo"){
+                int ini = this->adjList[j]->op;
+                int fim = this->adjList[j + 2]->op;
+                if(word[i] >= ini && word[i] <= fim)
+                    next[j + 3] = true;
+            }
+        }
 
         bool* marked = new bool[this->V];
         for(int j = 0; j < this->V; j++)
             marked[j] = false;
 
         // encontrar, da letra que lemos, onde podemos chegar por lambda-t
+        bool rodou = false;
         for(int j = 0; j < this->V; j++){
             if(next[j]){
                 rodou = true;
                 dfsR(j, marked);
             }
         }
+
         // se não chegamos ao próximo caractere, quebra
         if(!rodou)
             return false;
-
-        cout << "VETOR MARKED: " << endl;
-        for(int j = 0; j < this->V; j++)
-            cout << marked[j] << " ";
-        cout << endl;
 
         // manter o resultado obtido no DFS pra rodar na proxima iteracao do grafo
         for(int j = 0; j < this->V; j++)
@@ -167,12 +220,7 @@ bool Graph::recognize(string word){
 
         delete[] next;
         delete[] marked;
-        rodou = false;
     }
-    cout << "VETOR VISITED FIM: " << endl;
-    for(int i = 0; i < this->V; i++)
-        cout << visited[i] << " ";
-    cout << endl;
 
     bool retorno = visited[this->V - 1];
     delete[] visited;
