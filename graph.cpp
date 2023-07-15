@@ -209,6 +209,9 @@ bool Graph::recognize(string word){
                 dfsR(j, marked);
             }
         }
+        
+        if(next[this->V - 1])
+            return true;
 
         // se não chegamos ao próximo caractere, quebra
         if(!rodou)
